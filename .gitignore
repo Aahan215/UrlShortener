@@ -1,0 +1,35 @@
+# Target compilation directory (Wipe out local build artifacts)
+target/
+*.jar
+*.war
+*.ear
+*.class
+
+# Log execution directories
+*.log
+
+# In-Memory Database physical engine lock traces
+.h2.db
+*.mv.db
+*.trace.db
+
+# IntelliJ IDEA IDE project structural configs
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# Eclipse IDE structural configuration files
+.metadata/
+.classpath
+.project
+.settings/
+*.launch
+
+# Visual Studio Code workspace settings
+.vscode/
+
+# System specific architecture configuration logs
+.DS_Store
+Thumbs.db
