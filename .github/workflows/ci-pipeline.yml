@@ -1,0 +1,35 @@
+name: Java Spring Boot CI Pipeline
+
+# Trigger conditions: Run the suite on any push or pull request to main branches
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    # Run on a pristine, isolated latest Ubuntu Linux infrastructure runner environment
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Fetch the latest codebase snapshot from your active repository branch
+    - name: Checkout Codebase
+      uses: actions/checkout@v4
+
+    # 2. Set up the correct JDK 17 compiler engine runtime environment
+    - name: Set up Java 17 Runtime
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin' # Eclipse Temurin is the industry standard for production openjdk builds
+        cache: 'maven'         # Speeds up subsequent pipeline runs by caching your pom.xml dependencies
+
+    # 3. Compile the code and execute all 12 happy paths and failure integration tests
+    - name: Compile and Run Test Suite via Maven
+      run: mvn clean test
+
+    # 4. Build package if tests pass smoothly
+    - name: Build Production Application Package Jar
+      if: success()
+      run: mvn package -DskipTests
