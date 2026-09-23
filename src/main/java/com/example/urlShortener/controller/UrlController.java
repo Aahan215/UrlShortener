@@ -4,19 +4,17 @@ import com.example.urlShortener.exception.UrlShortenerException;
 import com.example.urlShortener.model.UrlMapping;
 import com.example.urlShortener.service.UrlService;
 
-// Spring MVC Framework Imports
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
 
-// OpenAPI/Swagger Documentation Annotation Imports
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.headers.Header;
 
-// Java Standard Utility Imports
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -32,9 +30,8 @@ public class UrlController {
     }
 
     @PostMapping("/api/shorten")
-    public ResponseEntity<?> shorten(@RequestBody UrlMapping request) {
+    public ResponseEntity<?> shorten(@RequestBody UrlMapping request, HttpServletRequest servletRequest) {
         String longUrl = request.getLongUrl();
-        
         String customAlias = request.getShortCode(); 
 
         if (longUrl == null || longUrl.isEmpty()) {
@@ -42,7 +39,20 @@ public class UrlController {
         }
 
         String shortCode = urlService.shortenUrl(longUrl, customAlias, request.getExpiresAt());
-        String fullShortUrl = "http://localhost:8080/" + shortCode;
+        
+        // Dynamically detects if the request came from localhost or a live DigitalOcean domain link
+        String scheme = servletRequest.getScheme();             
+        String serverName = servletRequest.getServerName();     
+        int serverPort = servletRequest.getServerPort();
+        
+        String baseDomainUrl = scheme + "://" + serverName;
+        
+        // Append port extension settings if running locally on localhost:8080 environment contexts
+        if ((scheme.equals("http") && serverPort != 80) || (scheme.equals("https") && serverPort != 443)) {
+            baseDomainUrl += ":" + serverPort;
+        }
+        
+        String fullShortUrl = baseDomainUrl + "/" + shortCode;
         return ResponseEntity.ok(Map.of("shortUrl", fullShortUrl, "code", shortCode));
     }
 
@@ -54,7 +64,7 @@ public class UrlController {
             @ApiResponse(
                 responseCode = "302", 
                 description = "Redirect successful. Target URL provided in the Location header.",
-                content = @Content // Crucial: Empty content blocks Swagger from displaying structural body text
+                content = @Content
             ),
             @ApiResponse(responseCode = "404", description = "Short code does not exist."),
             @ApiResponse(responseCode = "410", description = "This short link has been deactivated or expired.")
@@ -66,14 +76,10 @@ public class UrlController {
             @RequestHeader(value = HttpHeaders.USER_AGENT, required = false) String userAgent) {
             
         String longUrl = urlService.getAndTrackLongUrl(shortCode, referrer, userAgent);
-        
         HttpHeaders headers = new HttpHeaders();
         headers.setLocation(URI.create(longUrl));
-        
-        // Return a clean 302 Found status code with a completely empty body payload
         return new ResponseEntity<>(headers, HttpStatus.FOUND);
     }
-
 
     @GetMapping("/api/metadata/{shortCode}")
     public ResponseEntity<?> getMetadata(@PathVariable String shortCode) {
